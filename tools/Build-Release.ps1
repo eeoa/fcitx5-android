@@ -10,6 +10,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $taskRepoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$taskToolchainsRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../toolchains'))
 if (-not $ApplicationId) {
     $ApplicationId = Get-Content (Join-Path $taskRepoRoot 'gradle.properties') |
         Where-Object { $_ -match '^forkApplicationId=' } |
@@ -32,7 +33,7 @@ if (-not (Test-Path -LiteralPath $taskStoreFile) -or
     throw 'Invalid PKCS12 signing configuration. The upstream signing interface uses one password.'
 }
 if (-not $JavaHome) {
-    $JavaHome = Get-ChildItem (Join-Path $PSScriptRoot '../../toolchains') -Directory -Filter 'jdk-*' |
+    $JavaHome = Get-ChildItem $taskToolchainsRoot -Directory -Filter 'jdk-*' |
         Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty FullName
 }
 if (-not (Test-Path -LiteralPath (Join-Path $JavaHome 'bin/java.exe'))) {
@@ -41,11 +42,28 @@ if (-not (Test-Path -LiteralPath (Join-Path $JavaHome 'bin/java.exe'))) {
 
 $taskEnvironment = @{
     JAVA_HOME = $JavaHome
-    GRADLE_USER_HOME = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../toolchains/gradle-user-home'))
+    GRADLE_USER_HOME = Join-Path $taskToolchainsRoot 'gradle-user-home'
     SIGN_KEY_FILE = $taskStoreFile
     SIGN_KEY_ALIAS = $taskSigning.keyAlias
     SIGN_KEY_PWD = $taskSigning.storePassword
     SIGN_KEY_STORE_TYPE = $taskSigning.storeType
+}
+# Native dependencies stay alongside the checkout, without changing the system PATH.
+$taskNativePaths = @()
+$taskGettextBin = Join-Path $taskToolchainsRoot 'gettext/bin'
+if (Test-Path -LiteralPath (Join-Path $taskGettextBin 'msgfmt.exe')) {
+    $taskNativePaths += $taskGettextBin
+}
+$taskCmake = Get-ChildItem (Join-Path $taskToolchainsRoot 'android-sdk/cmake') -Directory -ErrorAction SilentlyContinue |
+    Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'bin/ninja.exe') } |
+    Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+if ($taskCmake) { $taskNativePaths += Join-Path $taskCmake.FullName 'bin' }
+if ($taskNativePaths.Count) {
+    $taskEnvironment['PATH'] = ($taskNativePaths -join [IO.Path]::PathSeparator) + [IO.Path]::PathSeparator + $env:PATH
+}
+$taskEcmDir = Join-Path $taskToolchainsRoot 'ecm/share/ECM/cmake'
+if (-not $env:ECM_DIR -and (Test-Path -LiteralPath (Join-Path $taskEcmDir 'ECMConfig.cmake'))) {
+    $taskEnvironment['ECM_DIR'] = $taskEcmDir
 }
 $taskOriginalEnvironment = @{}
 foreach ($taskName in $taskEnvironment.Keys) {
@@ -61,6 +79,10 @@ try {
 } finally {
     Pop-Location
     foreach ($taskName in $taskOriginalEnvironment.Keys) {
-        [Environment]::SetEnvironmentVariable($taskName, $taskOriginalEnvironment[$taskName], 'Process')
+        if ($null -eq $taskOriginalEnvironment[$taskName]) {
+            Remove-Item -LiteralPath "Env:$taskName" -ErrorAction SilentlyContinue
+        } else {
+            [Environment]::SetEnvironmentVariable($taskName, $taskOriginalEnvironment[$taskName], 'Process')
+        }
     }
 }

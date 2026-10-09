@@ -10,21 +10,23 @@ This fork is based on upstream release **0.1.3** (`048f581c`).
 - `develop`: personal integration branch, initially based on that release.
 - `setup/identity-and-signing`: independent package and signing preparation.
 
-Create future layout work from the integration branch:
+Start each new feature from the current integration branch:
 
 ```powershell
 git switch develop
-git switch -c feature/keys14-layout
-# Implement and commit the layout, then integrate it:
-git switch develop
-git merge --ff-only feature/keys14-layout
+git pull --ff-only origin develop
+git switch -c feature/next-layout
 ```
 
-If `develop` has advanced, either rebase your unpublished feature branch onto
-`develop` before the merge, or cherry-pick its selected commits onto `develop`.
-Do not rewrite the published upstream tag or the release baseline. Future
-upstream upgrades can be reviewed with `git fetch upstream --tags` before
-merging a newer release tag into `develop`.
+Push the feature branch to this fork and open a pull request targeting `develop`.
+Use **Squash and merge** after review and validation, so each feature contributes
+one complete commit to `develop`. Delete its feature branch after integration.
+Start later work from the updated `develop` rather than reusing a branch that
+has already been squashed. Do not create an extra merge commit for delivery.
+
+Do not rewrite the published upstream tag or the release baseline. Fetch future
+upstream releases with `git fetch upstream --tags`, prepare the upgrade on its
+own branch, and review it through a separate pull request in this fork.
 
 ## Application identity
 
@@ -54,6 +56,11 @@ fcitx/
   toolchains/
     jdk-21.0.12.1+1/          # portable Microsoft OpenJDK 21
     gradle-user-home/         # local Gradle downloads/cache
+    android-sdk/             # local SDK, Build-Tools and NDK
+    extra-cmake-modules/     # KDE ECM v6.18.0 sources
+    ecm/                     # installed ECM CMake modules
+    gettext/                 # msgfmt and other native host tools
+    rime-1.12.0/              # official Windows engine for schema tests
   signing/
     fcitx5-release.p12        # private PKCS12 signing key
     release-signing.json     # private passwords and alias
@@ -76,6 +83,9 @@ Certificate SHA-256:
 
 PowerShell 7 and a JDK are required by the helper scripts. They discover a JDK
 under the workspace's `toolchains/` directory, or accept `-JavaHome`.
+The helper also discovers the local Gettext binaries, SDK CMake/Ninja, and
+installed ECM modules. An explicitly configured `ECM_DIR` takes precedence.
+These settings apply only to the build process and are restored on exit.
 
 ```powershell
 # Main app; the configured application ID is used automatically.
@@ -110,7 +120,90 @@ Validation completed during setup: all pinned submodules were initialized,
 the convention build's `compileKotlin` task passed, both PowerShell scripts
 parsed successfully, and the generated private key signed a JAR whose signature
 was verified. Key overwrite protection and invalid application ID rejection
-were also checked. A full APK build awaits Android SDK/NDK/CMake setup.
+were also checked. No full APK build was performed during the initial setup.
+
+## 14 键拼音
+
+开发分支：`feature/keys14-layout`。全键盘继续保留，新增布局使用以下字母分组：
+
+```text
+QW  ER  TY  UI  OP
+AS  DF  GH  JK  L
+    ZX  CV  BN  M
+```
+
+首版使用本 fork 的 **Rime 插件**解码。每个键发送该组第一个字母的小写编码；
+`keys14_pinyin.schema.yaml` 将全部 26 个字母映射到这些编码，并复用朙月拼音词库。
+这能同时处理一个音节中多个歧义字母和连续词组，不依赖单次拼写纠错。
+候选栏仅显示候选词，不显示候选词旁的拼音提示。
+内置拼音、双拼和其他输入法继续使用原布局。
+
+使用方法：
+
+1. 编译并安装本 fork 的主程序与 Rime 插件，使用相同的包名配置和签名。
+2. 在输入法列表中添加 Rime，使用键盘的地球键切到 Rime。
+   展开键盘工具栏 → `…` → 当前 Rime 方案图标 → **14键拼音**。
+3. 键盘自动切换为 14 键。选择其他方案或 Rime 西文模式后恢复全键盘。
+4. 点击“分词”插入 `'` 音节分隔符；点击“符”和“123”进入对应面板，
+   返回字母键盘时自动恢复 14 键。字母键上的小数字、标点沿用滑动输入手势。
+
+键盘高度沿用原有设置：**虚拟键盘 → 键盘高度**。横竖屏可分别调整到
+屏幕高度的 10%～90%，默认竖屏 30%、横屏 49%。
+
+若已有 `default.custom.yaml` 覆盖 `schema_list`，需在自己的列表中加入
+`- schema: keys14_pinyin`，然后重新部署 Rime。方案名 `14键拼音` 是 Android
+端自动选择布局的标记，请保留此名称。
+
+只编译主程序和 Rime 插件的 arm64 版本：
+
+```powershell
+./tools/Build-Release.ps1 -GradleArguments @('-PbuildABI=arm64-v8a', ':plugin:rime:assembleRelease')
+```
+
+例如“你好”按 `BN UI GH AS OP`，发送编码 `bugao`；“中国”按
+`ZX GH OP BN GH GH UI OP`，发送编码 `zgobgguo`。同一编码可以产生多个正确的
+拼音、汉字候选，由词频及上下文排序，并通过候选栏选词。
+
+解码验证脚本使用官方 librime 1.12.0 Windows 发行包（与 Android 插件同版本），
+在临时用户目录中部署 CMake 安装清单里的方案与词库，不会访问个人 Rime 配置：
+
+```powershell
+python tools/validate-keys14-rime.py --rime-dir ../toolchains/rime-1.12.0/dist --work-dir ../toolchains
+```
+
+已验证 `BN UI` 同时产生“你”和“不”，以及“你好”“中国”“学习”“输入”
+“我们”“绿色”等词组、手动分词、退格、选词、空格上屏和原全拼方案。
+`Keys14KeyboardTest` 另检查 26 个字母覆盖、界面编码与方案一致、每行宽度以及
+只在匹配的 Rime 中文方案中启用布局。
+
+Android `:app:compileDebugKotlin` 与上述两个单元测试已通过。
+
+2026-10-09 已完成主程序与 Rime 插件的 arm64 Release APK 构建，
+`apksigner verify` 确认二者使用上文的同一证书。主机原生依赖使用 SDK CMake
+3.31.6、KDE extra-cmake-modules 6.18.0，以及 Gettext 1.0 / iconv 1.19。
+
+已通过 ADB 安装到 Pixel 11 Pro（arm64-v8a，API 37），与官方包并存。
+在专用的本地文本框中，实际触摸验证了 14 键显示和歧义候选，
+“你好”“中国”“学习”“输入”的选词和空格上屏、输错后退格、手动分词，
+以及数字、符号面板输入和返回 14 键。英语切换后显示原全键盘，切回 Rime
+恢复 14 键；Rime 自身的西文模式切换也已验证。测试截图和文本框 XML 保留在工作区的
+`toolchains/keys14-device-test/`，不放入 Git。
+测试的代码版本为 `6fdad62b`，已安装的两个 APK 另保存在
+`artifacts/keys14-arm64/`。测试后移除临时文本框应用并恢复原来的默认键盘，
+保留本 fork 及其已配置的 14 键方案。
+
+关闭候选词旁拼音提示后，另对 Rime 提交 `83981d94`（方案版本 1.1）完成
+解码回归、签名验证和 Pixel 覆盖安装测试。候选栏只显示候选词，“你好”可正常
+空格上屏。该次插件 APK 和验证记录在 `artifacts/keys14-no-pinyin/`。
+
+<img src="docs/keys14/pixel-candidates.png" alt="Pixel 上的 14 键拼音和不带拼音提示的候选栏" width="320" />
+
+当前输入法列表仍使用插件名称 **Rime**，方案菜单和空格键显示 **14键拼音**。
+本 fork 发布测试版时，应从待发布提交统一构建主程序与 Rime 插件，两个 APK
+使用同一包名配置、签名证书和 ABI。安装包放在 GitHub Release 附件中，
+工具链、私钥及密码配置继续保留在本地。
+
+设计参考：[Rime 拼写运算](https://github.com/rime/home/wiki/SpellingAlgebra)。
 
 References:
 

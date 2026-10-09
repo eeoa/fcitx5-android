@@ -41,6 +41,7 @@ add_subdirectory(fcitx5-rime)
 
 install(FILES
         "default.yaml"
+        "keys14_pinyin.schema.yaml"
         "rime-essay/essay.txt"
         "rime-prelude/key_bindings.yaml"
         "rime-prelude/punctuation.yaml"

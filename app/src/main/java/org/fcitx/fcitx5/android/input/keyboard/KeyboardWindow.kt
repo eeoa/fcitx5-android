@@ -68,13 +68,22 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     private val keyboards: HashMap<String, BaseKeyboard> by lazy {
         hashMapOf(
             TextKeyboard.Name to TextKeyboard(context, theme),
+            Keys14Keyboard.Name to Keys14Keyboard(context, theme),
             NumberKeyboard.Name to NumberKeyboard(context, theme)
         )
     }
     private var currentKeyboardName = ""
     private var lastSymbolType: String by AppPrefs.getInstance().internal.lastSymbolLayout
+    private var punctuationMapping: Map<String, String> = emptyMap()
 
     private val currentKeyboard: BaseKeyboard? get() = keyboards[currentKeyboardName]
+
+    // Text remains the return target used by the number and symbol keyboards.
+    private fun textLayout(ime: InputMethodEntry): String =
+        if (Keys14Keyboard.supports(ime)) Keys14Keyboard.Name else TextKeyboard.Name
+
+    private fun isTextLayout(name: String) =
+        name == TextKeyboard.Name || name == Keys14Keyboard.Name
 
     private val keyActionListener = KeyActionListener { it, source ->
         if (it is KeyAction.LayoutSwitchAction) {
@@ -91,7 +100,7 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     // This will be called EXACTLY ONCE
     override fun onCreateView(): View {
         keyboardView = context.frameLayout(R.id.keyboard_view)
-        attachLayout(TextKeyboard.Name)
+        attachLayout(textLayout(fcitx.runImmediately { inputMethodEntryCached }))
         return keyboardView
     }
 
@@ -113,14 +122,19 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
             it.onAttach()
             it.onReturnDrawableUpdate(returnKeyDrawable.resourceId)
             it.onInputMethodUpdate(fcitx.runImmediately { inputMethodEntryCached })
+            it.onPunctuationUpdate(punctuationMapping)
         }
     }
 
     fun switchLayout(to: String, remember: Boolean = true) {
-        val target = to.ifEmpty { lastSymbolType }
         ContextCompat.getMainExecutor(service).execute {
+            val target = when (to) {
+                TextKeyboard.Name -> textLayout(fcitx.runImmediately { inputMethodEntryCached })
+                "" -> lastSymbolType
+                else -> to
+            }
             if (keyboards.containsKey(target)) {
-                if (remember && target != TextKeyboard.Name) {
+                if (remember && !isTextLayout(target)) {
                     lastSymbolType = target
                 }
                 if (target == currentKeyboardName) return@execute
@@ -149,9 +163,13 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
 
     override fun onImeUpdate(ime: InputMethodEntry) {
         currentKeyboard?.onInputMethodUpdate(ime)
+        if (isTextLayout(currentKeyboardName)) {
+            switchLayout(TextKeyboard.Name, remember = false)
+        }
     }
 
     override fun onPunctuationUpdate(mapping: Map<String, String>) {
+        punctuationMapping = mapping
         currentKeyboard?.onPunctuationUpdate(mapping)
     }
 
