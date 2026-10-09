@@ -54,6 +54,8 @@ fcitx/
   toolchains/
     jdk-21.0.12.1+1/          # portable Microsoft OpenJDK 21
     gradle-user-home/         # local Gradle downloads/cache
+    android-sdk/             # local SDK, Build-Tools and NDK
+    rime-1.12.0/              # official Windows engine for schema tests
   signing/
     fcitx5-release.p12        # private PKCS12 signing key
     release-signing.json     # private passwords and alias
@@ -110,7 +112,62 @@ Validation completed during setup: all pinned submodules were initialized,
 the convention build's `compileKotlin` task passed, both PowerShell scripts
 parsed successfully, and the generated private key signed a JAR whose signature
 was verified. Key overwrite protection and invalid application ID rejection
-were also checked. A full APK build awaits Android SDK/NDK/CMake setup.
+were also checked. No full APK build was performed during the initial setup.
+
+## 14 键拼音
+
+开发分支：`feature/keys14-layout`。全键盘继续保留，新增布局使用以下字母分组：
+
+```text
+QW  ER  TY  UI  OP
+AS  DF  GH  JK  L
+    ZX  CV  BN  M
+```
+
+首版使用本 fork 的 **Rime 插件**解码。每个键发送该组第一个字母的小写编码；
+`keys14_pinyin.schema.yaml` 将全部 26 个字母映射到这些编码，并复用朙月拼音词库。
+这能同时处理一个音节中多个歧义字母和连续词组，不依赖单次拼写纠错。
+内置拼音、双拼和其他输入法继续使用原布局。
+
+使用方法：
+
+1. 编译并安装本 fork 的主程序与 Rime 插件，使用相同的包名配置和签名。
+2. 在输入法列表中添加 Rime，在其方案菜单中选择 **14键拼音**。
+3. 键盘自动切换为 14 键。选择其他方案或 Rime 西文模式后恢复全键盘。
+4. 点击“分词”插入 `'` 音节分隔符；点击“符”和“123”进入对应面板，
+   返回字母键盘时自动恢复 14 键。字母键上的小数字、标点沿用滑动输入手势。
+
+若已有 `default.custom.yaml` 覆盖 `schema_list`，需在自己的列表中加入
+`- schema: keys14_pinyin`，然后重新部署 Rime。方案名 `14键拼音` 是 Android
+端自动选择布局的标记，请保留此名称。
+
+只编译主程序和 Rime 插件的 arm64 版本：
+
+```powershell
+./tools/Build-Release.ps1 -GradleArguments @('-PbuildABI=arm64-v8a', ':plugin:rime:assembleRelease')
+```
+
+例如“你好”按 `BN UI GH AS OP`，发送编码 `bugao`；“中国”按
+`ZX GH OP BN GH GH UI OP`，发送编码 `zgobgguo`。同一编码可以产生多个正确的
+拼音、汉字候选，由词频及上下文排序，并通过候选栏选词。
+
+解码验证脚本使用官方 librime 1.12.0 Windows 发行包（与 Android 插件同版本），
+在临时用户目录中部署 CMake 安装清单里的方案与词库，不会访问个人 Rime 配置：
+
+```powershell
+python tools/validate-keys14-rime.py --rime-dir ../toolchains/rime-1.12.0/dist --work-dir ../toolchains
+```
+
+已验证 `BN UI` 同时产生“你”和“不”，以及“你好”“中国”“学习”“输入”
+“我们”“绿色”等词组、手动分词、退格、选词、空格上屏和原全拼方案。
+`Keys14KeyboardTest` 另检查 26 个字母覆盖、界面编码与方案一致、每行宽度以及
+只在匹配的 Rime 中文方案中启用布局。
+
+Android `:app:compileDebugKotlin` 与上述两个单元测试已通过。
+尚未在模拟器或真机上验证触摸与显示，也未构建完整 APK；原生打包还需要
+SDK CMake、extra-cmake-modules 和 Gettext 等主机工具。
+
+设计参考：[Rime 拼写运算](https://github.com/rime/home/wiki/SpellingAlgebra)。
 
 References:
 

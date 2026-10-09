@@ -1,0 +1,27 @@
+# Rime schema: ambiguous QWERTY pairs, with independent L and M keys.
+# The original pinyin syllables and language model remain in luna_pinyin.
+__include: luna_pinyin_simp.schema:/
+
+schema:
+  schema_id: keys14_pinyin
+  name: 14键拼音
+  version: '1.0'
+  author:
+    - Fcitx5 for Android Contributors
+  description: |
+    QW ER TY UI OP / AS DF GH JK L / ZX CV BN M
+    每键输入一个编码，由拼音词库消歧；分词键输入音节分隔符。
+
+speller:
+  alphabet: qetuoadgjlzcbm
+  delimiter: " '"
+  algebra:
+    # Map every letter, including multiple ambiguous letters in one syllable.
+    # Keep this mapping in sync with Keys14Keyboard.Layout.
+    - xlit/abcdefghijklmnopqrstuvwxyz/abcdedggujjlmbooqeatucqztz/
+
+translator:
+  # A separate prism is essential: the normal full-pinyin index is incompatible.
+  prism: keys14_pinyin
+  spelling_hints: 32
+  always_show_comments: true
