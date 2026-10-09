@@ -7,6 +7,15 @@ plugins {
 android {
     namespace = "org.fcitx.fcitx5.android.lib.plugin_base"
 
+    buildTypes {
+        release {
+            manifestPlaceholders["mainApplicationId"] = project.mainApplicationId
+        }
+        debug {
+            manifestPlaceholders["mainApplicationId"] = "${project.mainApplicationId}.debug"
+        }
+    }
+
     publishing {
         // :lib:plugin_base contains different AndroidManifest.xml for debug and release variant
         multipleVariants { allVariants() }

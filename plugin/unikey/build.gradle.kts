@@ -11,7 +11,7 @@ android {
     namespace = "org.fcitx.fcitx5.android.plugin.unikey"
 
     defaultConfig {
-        applicationId = "org.fcitx.fcitx5.android.plugin.unikey"
+        applicationId = "${project.mainApplicationId}.plugin.unikey"
 
         @Suppress("UnstableApiUsage")
         externalNativeBuild {

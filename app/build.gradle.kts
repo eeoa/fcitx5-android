@@ -13,7 +13,8 @@ android {
     namespace = "org.fcitx.fcitx5.android"
 
     defaultConfig {
-        applicationId = "org.fcitx.fcitx5.android"
+        applicationId = project.mainApplicationId
+        buildConfigField("String", "PLUGIN_PACKAGE_PREFIX", "\"${project.mainApplicationId}.plugin.\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         @Suppress("UnstableApiUsage")

@@ -26,6 +26,11 @@ fun Project.runCmd(cmd: String, defaultValue: String = ""): String {
 
 val Project.libs get() = the<LibrariesForLibs>()
 
+// Keep the installed package identity independent of Kotlin/JNI namespaces.
+val Project.mainApplicationId: String
+    get() = rootProject.providers.gradleProperty("forkApplicationId")
+        .getOrElse("org.fcitx.fcitx5.android")
+
 val Project.assetsDir: File
     get() = file("src/main/assets").also { it.mkdirs() }
 

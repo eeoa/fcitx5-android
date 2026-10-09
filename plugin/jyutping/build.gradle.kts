@@ -11,7 +11,7 @@ android {
     namespace = "org.fcitx.fcitx5.android.plugin.jyutping"
 
     defaultConfig {
-        applicationId = "org.fcitx.fcitx5.android.plugin.jyutping"
+        applicationId = "${project.mainApplicationId}.plugin.jyutping"
 
         @Suppress("UnstableApiUsage")
         externalNativeBuild {
