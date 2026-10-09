@@ -203,11 +203,12 @@ def run(distribution, work_root):
                 type_keys(keys)
                 values = candidates()
                 assert all(word in values for word in expected), (keys, expected, values[:20])
-                if "你好" in expected:
-                    assert comments["你好"] == "ni hao", "Candidate hint did not restore full pinyin"
+                assert all(not comment for comment in comments.values()), (
+                    "Candidate spelling hints should be hidden", keys, comments
+                )
                 print(json.dumps({"keys": keys, "preedit": preedit(), "expected": expected,
                                   "ranks": [values.index(word) + 1 for word in expected],
-                                  "hints": [comments[word] for word in expected]}, ensure_ascii=False))
+                                  "comments": [comments[word] for word in expected]}, ensure_ascii=False))
 
             type_keys("bugao")
             before = preedit()
@@ -228,7 +229,7 @@ def run(distribution, work_root):
             assert select_schema(session, b"luna_pinyin_simp")
             type_keys("nihao")
             assert "你好" in candidates(), "Standard full-pinyin regression"
-            print("PASS: ambiguity, phrases, separator, deletion, selection, space and full pinyin")
+            print("PASS: hidden spelling hints, ambiguity, phrases, separator, deletion, selection, space and full pinyin")
         finally:
             api("finalize", None)()
 
