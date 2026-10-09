@@ -105,6 +105,9 @@ val Project.signKeyPwd: String?
 val Project.signKeyAlias: String?
     get() = epn("SIGN_KEY_ALIAS", "signKeyAlias")
 
+val Project.signKeyStoreType: String?
+    get() = epn("SIGN_KEY_STORE_TYPE", "signKeyStoreType")
+
 fun NamedDomainObjectContainer<out ApkSigningConfig>.fromProjectEnv(project: Project): ApkSigningConfig? {
     val keyFile = project.signKey ?: return null
     val name = "release"
@@ -113,5 +116,6 @@ fun NamedDomainObjectContainer<out ApkSigningConfig>.fromProjectEnv(project: Pro
         storePassword = project.signKeyPwd
         keyAlias = project.signKeyAlias
         keyPassword = project.signKeyPwd
+        project.signKeyStoreType?.let { storeType = it }
     }
 }
