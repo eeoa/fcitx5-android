@@ -2,6 +2,11 @@
 
 [Fcitx5](https://github.com/fcitx/fcitx5) input method framework and engines ported to Android.
 
+本 fork 基于上游 **0.1.3**，新增 **14 键中文拼音布局**，使用配套的 Rime 插件解码。
+安装、方案切换、键盘高度调整和自行构建的方法见 [14 键版说明](FORK.md#14-键拼音)。
+本 fork 的安装包使用独立包名和签名；下方原项目的下载链接指向官方版，
+本 fork 的测试版请查看[本仓库 Releases](https://github.com/eeoa/fcitx5-android/releases)。
+
 ## Download
 
 [<img src="https://github.com/rubenpgrady/get-it-on-github/raw/refs/heads/main/get-it-on-github.png" alt="Git it on GitHub" width="207" height="80">](https://github.com/fcitx5-android/fcitx5-android/releases/latest)

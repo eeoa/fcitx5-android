@@ -10,21 +10,23 @@ This fork is based on upstream release **0.1.3** (`048f581c`).
 - `develop`: personal integration branch, initially based on that release.
 - `setup/identity-and-signing`: independent package and signing preparation.
 
-Create future layout work from the integration branch:
+Start each new feature from the current integration branch:
 
 ```powershell
 git switch develop
-git switch -c feature/keys14-layout
-# Implement and commit the layout, then integrate it:
-git switch develop
-git merge --ff-only feature/keys14-layout
+git pull --ff-only origin develop
+git switch -c feature/next-layout
 ```
 
-If `develop` has advanced, either rebase your unpublished feature branch onto
-`develop` before the merge, or cherry-pick its selected commits onto `develop`.
-Do not rewrite the published upstream tag or the release baseline. Future
-upstream upgrades can be reviewed with `git fetch upstream --tags` before
-merging a newer release tag into `develop`.
+Push the feature branch to this fork and open a pull request targeting `develop`.
+Use **Squash and merge** after review and validation, so each feature contributes
+one complete commit to `develop`. Delete its feature branch after integration.
+Start later work from the updated `develop` rather than reusing a branch that
+has already been squashed. Do not create an extra merge commit for delivery.
+
+Do not rewrite the published upstream tag or the release baseline. Fetch future
+upstream releases with `git fetch upstream --tags`, prepare the upgrade on its
+own branch, and review it through a separate pull request in this fork.
 
 ## Application identity
 
@@ -145,6 +147,9 @@ AS  DF  GH  JK  L
 4. 点击“分词”插入 `'` 音节分隔符；点击“符”和“123”进入对应面板，
    返回字母键盘时自动恢复 14 键。字母键上的小数字、标点沿用滑动输入手势。
 
+键盘高度沿用原有设置：**虚拟键盘 → 键盘高度**。横竖屏可分别调整到
+屏幕高度的 10%～90%，默认竖屏 30%、横屏 49%。
+
 若已有 `default.custom.yaml` 覆盖 `schema_list`，需在自己的列表中加入
 `- schema: keys14_pinyin`，然后重新部署 Rime。方案名 `14键拼音` 是 Android
 端自动选择布局的标记，请保留此名称。
@@ -186,6 +191,17 @@ Android `:app:compileDebugKotlin` 与上述两个单元测试已通过。
 测试的代码版本为 `6fdad62b`，已安装的两个 APK 另保存在
 `artifacts/keys14-arm64/`。测试后移除临时文本框应用并恢复原来的默认键盘，
 保留本 fork 及其已配置的 14 键方案。
+
+关闭候选词旁拼音提示后，另对 Rime 提交 `83981d94`（方案版本 1.1）完成
+解码回归、签名验证和 Pixel 覆盖安装测试。候选栏只显示候选词，“你好”可正常
+空格上屏。该次插件 APK 和验证记录在 `artifacts/keys14-no-pinyin/`。
+
+<img src="docs/keys14/pixel-candidates.png" alt="Pixel 上的 14 键拼音和不带拼音提示的候选栏" width="320" />
+
+当前输入法列表仍使用插件名称 **Rime**，方案菜单和空格键显示 **14键拼音**。
+本 fork 发布测试版时，应从待发布提交统一构建主程序与 Rime 插件，两个 APK
+使用同一包名配置、签名证书和 ABI。安装包放在 GitHub Release 附件中，
+工具链、私钥及密码配置继续保留在本地。
 
 设计参考：[Rime 拼写运算](https://github.com/rime/home/wiki/SpellingAlgebra)。
 
