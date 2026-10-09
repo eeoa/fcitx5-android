@@ -55,6 +55,9 @@ fcitx/
     jdk-21.0.12.1+1/          # portable Microsoft OpenJDK 21
     gradle-user-home/         # local Gradle downloads/cache
     android-sdk/             # local SDK, Build-Tools and NDK
+    extra-cmake-modules/     # KDE ECM v6.18.0 sources
+    ecm/                     # installed ECM CMake modules
+    gettext/                 # msgfmt and other native host tools
     rime-1.12.0/              # official Windows engine for schema tests
   signing/
     fcitx5-release.p12        # private PKCS12 signing key
@@ -78,6 +81,9 @@ Certificate SHA-256:
 
 PowerShell 7 and a JDK are required by the helper scripts. They discover a JDK
 under the workspace's `toolchains/` directory, or accept `-JavaHome`.
+The helper also discovers the local Gettext binaries, SDK CMake/Ninja, and
+installed ECM modules. An explicitly configured `ECM_DIR` takes precedence.
+These settings apply only to the build process and are restored on exit.
 
 ```powershell
 # Main app; the configured application ID is used automatically.
@@ -132,7 +138,8 @@ AS  DF  GH  JK  L
 使用方法：
 
 1. 编译并安装本 fork 的主程序与 Rime 插件，使用相同的包名配置和签名。
-2. 在输入法列表中添加 Rime，在其方案菜单中选择 **14键拼音**。
+2. 在输入法列表中添加 Rime，使用键盘的地球键切到 Rime。
+   展开键盘工具栏 → `…` → 当前 Rime 方案图标 → **14键拼音**。
 3. 键盘自动切换为 14 键。选择其他方案或 Rime 西文模式后恢复全键盘。
 4. 点击“分词”插入 `'` 音节分隔符；点击“符”和“123”进入对应面板，
    返回字母键盘时自动恢复 14 键。字母键上的小数字、标点沿用滑动输入手势。
@@ -164,8 +171,20 @@ python tools/validate-keys14-rime.py --rime-dir ../toolchains/rime-1.12.0/dist -
 只在匹配的 Rime 中文方案中启用布局。
 
 Android `:app:compileDebugKotlin` 与上述两个单元测试已通过。
-尚未在模拟器或真机上验证触摸与显示，也未构建完整 APK；原生打包还需要
-SDK CMake、extra-cmake-modules 和 Gettext 等主机工具。
+
+2026-10-09 已完成主程序与 Rime 插件的 arm64 Release APK 构建，
+`apksigner verify` 确认二者使用上文的同一证书。主机原生依赖使用 SDK CMake
+3.31.6、KDE extra-cmake-modules 6.18.0，以及 Gettext 1.0 / iconv 1.19。
+
+已通过 ADB 安装到 Pixel 11 Pro（arm64-v8a，API 37），与官方包并存。
+在专用的本地文本框中，实际触摸验证了 14 键显示、歧义候选及拼音提示，
+“你好”“中国”“学习”“输入”的选词和空格上屏、输错后退格、手动分词，
+以及数字、符号面板输入和返回 14 键。英语切换后显示原全键盘，切回 Rime
+恢复 14 键；Rime 自身的西文模式切换也已验证。测试截图和文本框 XML 保留在工作区的
+`toolchains/keys14-device-test/`，不放入 Git。
+测试的代码版本为 `6fdad62b`，已安装的两个 APK 另保存在
+`artifacts/keys14-arm64/`。测试后移除临时文本框应用并恢复原来的默认键盘，
+保留本 fork 及其已配置的 14 键方案。
 
 设计参考：[Rime 拼写运算](https://github.com/rime/home/wiki/SpellingAlgebra)。
 
